@@ -10,21 +10,40 @@ permissions:
 jobs:
   build-and-upload:
     name: Build and upload
-    runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
-        # You can add more, for any target you'd like!
-        include:
-          - build: linux
-            os: ubuntu-latest
+        platform:
+          - os-name: FreeBSD-x86_64
+            runs-on: ubuntu-24.04
+            target: x86_64-unknown-freebsd
+            executable-name: telnet
+
+          - os-name: Linux-x86_64
+            runs-on: ubuntu-24.04
             target: x86_64-unknown-linux-musl
-          - build: macos
-            os: macos-latest
+            executable-name: telnet
+
+          - os-name: Linux-aarch64
+            runs-on: ubuntu-24.04
+            target: aarch64-unknown-linux-musl
+            executable-name: telnet
+
+          - os-name: Linux-riscv64
+            runs-on: ubuntu-24.04
+            target: riscv64gc-unknown-linux-gnu
+            executable-name: telnet
+
+          - os-name: Windows-x86_64
+            runs-on: windows-latest
+            target: x86_64-pc-windows-msvc
+            executable-name: telnet.exe
+
+          - os-name: macOS-x86_64
+            runs-on: macOS-latest
             target: x86_64-apple-darwin
-          - build: windows
-            os: windows-latest
-            target: stable-x86_64-pc-windows-msvc
+            executable-name: telnet.exe
+    
+    runs-on: ${{ matrix.platform.runs-on }}
 
     steps:
       - name: Checkout
@@ -34,45 +53,59 @@ jobs:
         shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Install Rust
-        # Or @nightly if you want
-        uses: dtolnay/rust-toolchain@stable
-        # Arguments to pass in
-        with:
-          # Make Rust compile to our target (defined in the matrix)
-          targets: ${{ matrix.target }}
+      # - name: Install Rust
+      #   # Or @nightly if you want
+      #   uses: dtolnay/rust-toolchain@stable
+      #   # Arguments to pass in
+      #   with:
+      #     # Make Rust compile to our target (defined in the matrix)
+      #     targets: ${{ matrix.target }}
 
-      - name: Build
-        uses: actions-rs/cargo@v1
+      # - name: Build
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     use-cross: true
+      #     command: build
+      #     args: --verbose --release --target ${{ matrix.target }}
+
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v1
         with:
-          use-cross: true
           command: build
-          args: --verbose --release --target ${{ matrix.target }}
-
-      - name: Build archive
-        shell: bash
-        run: |
-          # Replace with the name of your binary
-          binary_name="telnet"
-
-          dirname="$binary_name-${{ env.VERSION }}-${{ matrix.target }}"
-          mkdir "$dirname"
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            mv "target/${{ matrix.target }}/release/$binary_name.exe" "$dirname"
-          else
-            mv "target/${{ matrix.target }}/release/$binary_name" "$dirname"
-          fi
-
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            7z a "$dirname.zip" "$dirname"
-            echo "ASSET=$dirname.zip" >> $GITHUB_ENV
-          else
-            tar -czf "$dirname.tar.gz" "$dirname"
-            echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
-          fi
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+      
+      - name: Publish artifacts and release
+        uses: houseabsolute/actions-rust-release@v0
         with:
-          files: |
-            ${{ env.ASSET }}
+          executable-name: ${{ matrix.platform.executable-name }}
+          target: ${{ matrix.platform.target }}
+
+      # - name: Build archive
+      #   shell: bash
+      #   run: |
+      #     # Replace with the name of your binary
+      #     binary_name="telnet"
+# 
+      #     dirname="$binary_name-${{ env.VERSION }}-${{ matrix.target }}"
+      #     mkdir "$dirname"
+      #     if [ "${{ matrix.os }}" = "windows-latest" ]; then
+      #       mv "target/${{ matrix.target }}/release/$binary_name.exe" "$dirname"
+      #     else
+      #       mv "target/${{ matrix.target }}/release/$binary_name" "$dirname"
+      #     fi
+# 
+      #     if [ "${{ matrix.os }}" = "windows-latest" ]; then
+      #       7z a "$dirname.zip" "$dirname"
+      #       echo "ASSET=$dirname.zip" >> $GITHUB_ENV
+      #     else
+      #       tar -czf "$dirname.tar.gz" "$dirname"
+      #       echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
+      #     fi
+# 
+      # - name: Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: |
+      #       ${{ env.ASSET }}
