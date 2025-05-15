@@ -68,6 +68,12 @@ jobs:
       #     command: build
       #     args: --verbose --release --target ${{ matrix.target }}
 
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          echo "::set-output name=release_tag::$(date +"%Y.%m.%d")"
+          echo "::set-output name=release_date::$(date +"%Y.%m.%d")"
+
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
@@ -84,7 +90,9 @@ jobs:
           action-gh-release-parameters: |
             {
                 "repository": "lucabertani/telnet-rs",
-                "token": "${{ secrets.ACTIONS_RUST_RELEASE_TESTING_TOKEN }}"
+                "token": "${{ secrets.ACTIONS_RUST_RELEASE_TESTING_TOKEN }}",
+                "name": "${{ steps.tag.outputs.release_date }} Telnet rs",
+                "tag_name": "${{ steps.tag.outputs.release_tag }}""
             }
 
       # - name: Build archive
