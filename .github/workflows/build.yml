@@ -16,15 +16,15 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             rust_toolchain: stable
-            artifact_name: telnet-rs-linux-x64 # Aggiornato il nome dell'artefatto per chiarezza
+            artifact_name: telnet-rs-linux-x64
             archive_format: tar.gz
           # Windows Build
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             rust_toolchain: stable
-            artifact_name: telnet-rs-windows-x64 # Aggiornato il nome dell'artefatto per chiarezza
+            artifact_name: telnet-rs-windows-x64
             archive_format: zip
-          # Add other targets here if needed, e.g., macOS
+          # Add other targets here if needed
           # - target: x86_64-apple-darwin
           #   os: macos-latest
           #   rust_toolchain: stable
@@ -56,7 +56,7 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_DIR="target/${{ matrix.target }}/release"
-          APP_NAME="telnet-rs" # Aggiornato il nome del binario
+          APP_NAME="telnet-rs"
 
           cd "${ARTIFACT_DIR}"
 
@@ -78,7 +78,7 @@ jobs:
         shell: powershell
         run: |
           $ARTIFACT_DIR = "target\${{ matrix.target }}\release"
-          $APP_NAME = "telnet-rs" # Aggiornato il nome del binario
+          $APP_NAME = "telnet-rs"
           $FILE_TO_ARCHIVE = Join-Path -Path $ARTIFACT_DIR -ChildPath "${APP_NAME}.exe"
 
           if (-not (Test-Path $FILE_TO_ARCHIVE)) {
@@ -114,7 +114,6 @@ jobs:
 
       - name: Download all build artefacts
         uses: actions/download-artifact@v4
-        #with:
           # Downloads into subdirectories named after the artifact names
 
       - name: List downloaded files (for debugging)
@@ -124,15 +123,21 @@ jobs:
       - name: Create Release and Upload Assets
         uses: houseabsolute/actions-rust-release@v0
         with:
+          executable-name: telnet-rs
           # --- Parametro richiesto dall'action ---
-          executable-name: telnet-rs # Specificato il nome del binario
+          archive-name: | # Specifica i nomi base degli archivi che ti aspetti di allegare
+            telnet-rs-linux-x64
+            telnet-rs-windows-x64
+            # Aggiungi qui altri nomi di artefatti se aggiungi target
+            # telnet-rs-macos-x64
           # ------------------------------------
 
           skip_build: true
           skip_test: true
           skip_upload: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # I pattern dei file devono corrispondere ai NOMI degli artefatti aggiornati
+          # Il pattern 'files' aiuta l'action a trovare i file scaricati,
+          # anche se l'action ora "sa" quali nomi di archivi cercare.
           files: |
             telnet-rs-linux-x64/*
             telnet-rs-windows-x64/*
