@@ -36,7 +36,7 @@ jobs:
           - os-name: Windows-x86_64
             runs-on: windows-latest
             target: x86_64-pc-windows-msvc
-            executable-name: telnet
+            #executable-name: telnet
 
           #- os-name: macOS-x86_64
           #  runs-on: macOS-latest
