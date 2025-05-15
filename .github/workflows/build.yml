@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_DIR="target/${{ matrix.target }}/release"
-          APP_NAME="my-app" # Replace with your binary name
+          APP_NAME="telnet-rs" # Replace with your binary name
 
           # Go into the release directory to make paths relative
           cd "${ARTIFACT_DIR}"
