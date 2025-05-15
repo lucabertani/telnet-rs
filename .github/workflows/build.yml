@@ -1,145 +1,125 @@
-name: Rust Release
+name: Build & Release Rust Project
 
 on:
   workflow_dispatch:
-  pull_request:
+
+env:
+  BIN_NAME: telnet-rs  # Sostituisci con il nome reale del tuo binario
 
 jobs:
-  build_and_package:
-    name: Build on ${{ matrix.os }} for ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux Build
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            rust_toolchain: stable
-            artifact_name: telnet-rs-linux-x64
-            archive_format: tar.gz
-          # Windows Build
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            rust_toolchain: stable
-            artifact_name: telnet-rs-windows-x64
-            archive_format: zip
-          # Add other targets here if needed
-          # - target: x86_64-apple-darwin
-          #   os: macos-latest
-          #   rust_toolchain: stable
-          #   artifact_name: telnet-rs-macos-x64
-          #   archive_format: tar.gz
-
-
+  build-linux:
+    name: Build on Linux
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust Toolchain
+      - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.rust_toolchain }}
-          target: ${{ matrix.target }}
+          toolchain: stable
           profile: minimal
           override: true
 
-      # Potresti dover installare dipendenze specifiche per il target qui
+      - name: Build binary
+        run: cargo build --release
 
-      - name: Build Release
+      - name: Package binary (tar.gz)
         run: |
-          cargo build --release --target ${{ matrix.target }}
+          mkdir -p dist
+          cp target/release/${{ env.BIN_NAME }} dist/
+          tar -czvf ${{ env.BIN_NAME }}-linux.tar.gz -C dist ${{ env.BIN_NAME }}
 
-      # --- Step per packaging su Linux/macOS (usando tar) ---
-      - name: Package Artefacts (tar.gz)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          ARTIFACT_DIR="target/${{ matrix.target }}/release"
-          APP_NAME="telnet-rs"
-
-          cd "${ARTIFACT_DIR}"
-
-          FILE_TO_ARCHIVE="${APP_NAME}"
-
-          if [ ! -f "$FILE_TO_ARCHIVE" ]; then
-             echo "Error: Binary '$FILE_TO_ARCHIVE' not found in $ARTIFACT_DIR."
-             exit 1
-          fi
-
-          ARCHIVE_FILE="../../..//${{ matrix.artifact_name }}.${{ matrix.archive_format }}"
-          tar -czvf "$ARCHIVE_FILE" "$FILE_TO_ARCHIVE"
-
-          echo "Created archive: ${ARCHIVE_FILE}"
-
-      # --- Step per packaging su Windows (usando Compress-Archive) ---
-      - name: Package Artefacts (zip)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $ARTIFACT_DIR = "target\${{ matrix.target }}\release"
-          $APP_NAME = "telnet-rs"
-          $FILE_TO_ARCHIVE = Join-Path -Path $ARTIFACT_DIR -ChildPath "${APP_NAME}.exe"
-
-          if (-not (Test-Path $FILE_TO_ARCHIVE)) {
-             Write-Host "Error: Binary '$FILE_TO_ARCHIVE' not found."
-             exit 1
-          }
-
-          $ARCHIVE_FILE = "${{ matrix.artifact_name }}.${{ matrix.archive_format }}"
-
-          Compress-Archive -Path $FILE_TO_ARCHIVE -DestinationPath $ARCHIVE_FILE
-
-          Write-Host "Created archive: $ARCHIVE_FILE"
-
-      # --- Step per caricare l'artefatto ---
-      - name: Upload Artefact
+      - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.${{ matrix.archive_format }}
-          # retention-days: 7
+          name: archive-linux
+          path: ${{ env.BIN_NAME }}-linux.tar.gz
 
-  # Job separato per creare la release e caricare gli artefatti
-  create_release:
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-    needs: build_and_package
-
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          fetch-depth: 0
+          toolchain: stable
+          profile: minimal
+          override: true
 
-      - name: Download all build artefacts
-        uses: actions/download-artifact@v4
-          # Downloads into subdirectories named after the artifact names
+      - name: Build binary
+        run: cargo build --release
 
-      - name: List downloaded files (for debugging)
+      - name: Package binary (zip)
         run: |
-          ls -R
+          mkdir dist
+          copy target\release\${{ env.BIN_NAME }}.exe dist\
+          powershell Compress-Archive -Path dist\${{ env.BIN_NAME }}.exe -DestinationPath ${{ env.BIN_NAME }}-windows.zip
 
-      - name: Create Release and Upload Assets
-        uses: houseabsolute/actions-rust-release@v0
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
         with:
-          executable-name: telnet-rs
-          # --- Parametro richiesto dall'action ---
-          archive-name: | # Specifica i nomi base degli archivi che ti aspetti di allegare
-            telnet-rs-linux-x64
-            telnet-rs-windows-x64
-            # Aggiungi qui altri nomi di artefatti se aggiungi target
-            # telnet-rs-macos-x64
-          # ------------------------------------
+          name: archive-windows
+          path: ${{ env.BIN_NAME }}-windows.zip
 
-          skip_build: true
-          skip_test: true
-          skip_upload: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Il pattern 'files' aiuta l'action a trovare i file scaricati,
-          # anche se l'action ora "sa" quali nomi di archivi cercare.
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build binary
+        run: cargo build --release
+
+      - name: Package binary (tar.gz)
+        run: |
+          mkdir -p dist
+          cp target/release/${{ env.BIN_NAME }} dist/
+          tar -czvf ${{ env.BIN_NAME }}-macos.tar.gz -C dist ${{ env.BIN_NAME }}
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-macos
+          path: ${{ env.BIN_NAME }}-macos.tar.gz
+
+  release:
+    name: Create Release
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux archive
+        uses: actions/download-artifact@v4
+        with:
+          name: archive-linux
+          path: artifacts/
+
+      - name: Download Windows archive
+        uses: actions/download-artifact@v4
+        with:
+          name: archive-windows
+          path: artifacts/
+
+      - name: Download macOS archive
+        uses: actions/download-artifact@v4
+        with:
+          name: archive-macos
+          path: artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
           files: |
-            telnet-rs-linux-x64/*
-            telnet-rs-windows-x64/*
-          # Aggiungi qui altri pattern se aggiungi target
-          # telnet-rs-macos-x64/*
+            artifacts/${{ env.BIN_NAME }}-linux.tar.gz
+            artifacts/${{ env.BIN_NAME }}-windows.zip
+            artifacts/${{ env.BIN_NAME }}-macos.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
