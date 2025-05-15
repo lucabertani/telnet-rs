@@ -125,7 +125,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: Release ${{ steps.tag.outputs.tag }}
+          name: Telnet rs ${{ steps.tag.outputs.tag }}
           files: |
             artifacts/${{ env.BIN_NAME }}-linux.tar.gz
             artifacts/${{ env.BIN_NAME }}-windows.zip
