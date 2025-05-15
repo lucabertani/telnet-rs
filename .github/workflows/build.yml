@@ -79,7 +79,7 @@ jobs:
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@v0
         with:
-          executable-name: telnet
+          executable-name: telnet-rs
           target: ${{ matrix.platform.target }}
 
       # - name: Build archive
