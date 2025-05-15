@@ -16,19 +16,19 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             rust_toolchain: stable
-            artifact_name: telnet-rs-linux-x64
+            artifact_name: telnet-rs-linux-x64 # Aggiornato il nome dell'artefatto per chiarezza
             archive_format: tar.gz
           # Windows Build
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             rust_toolchain: stable
-            artifact_name: telnet-rs-windows-x64
+            artifact_name: telnet-rs-windows-x64 # Aggiornato il nome dell'artefatto per chiarezza
             archive_format: zip
           # Add other targets here if needed, e.g., macOS
           # - target: x86_64-apple-darwin
           #   os: macos-latest
           #   rust_toolchain: stable
-          #   artifact_name: my-app-macos-x64
+          #   artifact_name: telnet-rs-macos-x64
           #   archive_format: tar.gz
 
 
@@ -44,7 +44,7 @@ jobs:
           profile: minimal
           override: true
 
-      # Potresti dover installare dipendenze specifiche per il target qui (vedi commento precedente)
+      # Potresti dover installare dipendenze specifiche per il target qui
 
       - name: Build Release
         run: |
@@ -52,24 +52,21 @@ jobs:
 
       # --- Step per packaging su Linux/macOS (usando tar) ---
       - name: Package Artefacts (tar.gz)
-        if: runner.os != 'Windows' # Run this step only on non-Windows OS
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           ARTIFACT_DIR="target/${{ matrix.target }}/release"
-          APP_NAME="telnet-rs" # Replace with your binary name
+          APP_NAME="telnet-rs" # Aggiornato il nome del binario
 
-          # Go into the release directory to make paths relative
           cd "${ARTIFACT_DIR}"
 
-          FILE_TO_ARCHIVE="${APP_NAME}" # No extension for Linux/macOS binary
+          FILE_TO_ARCHIVE="${APP_NAME}"
 
-          # Check if the binary exists
           if [ ! -f "$FILE_TO_ARCHIVE" ]; then
              echo "Error: Binary '$FILE_TO_ARCHIVE' not found in $ARTIFACT_DIR."
              exit 1
           fi
 
-          # Create the archive one directory up (at the root level relative to the checkout)
           ARCHIVE_FILE="../../..//${{ matrix.artifact_name }}.${{ matrix.archive_format }}"
           tar -czvf "$ARCHIVE_FILE" "$FILE_TO_ARCHIVE"
 
@@ -77,42 +74,37 @@ jobs:
 
       # --- Step per packaging su Windows (usando Compress-Archive) ---
       - name: Package Artefacts (zip)
-        if: runner.os == 'Windows' # Run this step only on Windows OS
-        shell: powershell # Use PowerShell for Windows commands
+        if: runner.os == 'Windows'
+        shell: powershell
         run: |
           $ARTIFACT_DIR = "target\${{ matrix.target }}\release"
-          $APP_NAME = "telnet-rs" # Replace with your binary name
+          $APP_NAME = "telnet-rs" # Aggiornato il nome del binario
           $FILE_TO_ARCHIVE = Join-Path -Path $ARTIFACT_DIR -ChildPath "${APP_NAME}.exe"
 
-          # Check if the binary exists
           if (-not (Test-Path $FILE_TO_ARCHIVE)) {
              Write-Host "Error: Binary '$FILE_TO_ARCHIVE' not found."
              exit 1
           }
 
-          # Define the output archive file path (at the root level relative to the checkout)
           $ARCHIVE_FILE = "${{ matrix.artifact_name }}.${{ matrix.archive_format }}"
 
-          # Create the zip archive
           Compress-Archive -Path $FILE_TO_ARCHIVE -DestinationPath $ARCHIVE_FILE
 
           Write-Host "Created archive: $ARCHIVE_FILE"
 
-      # --- Step per caricare l'artefatto (uguale per entrambi i sistemi operativi) ---
+      # --- Step per caricare l'artefatto ---
       - name: Upload Artefact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }} # Use the unique name from the matrix
-          # The archive file is created at the root of the repository by the packaging steps
+          name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.${{ matrix.archive_format }}
-          # Optional: set retention-days to save space for older runs
           # retention-days: 7
 
-  # Job separato per creare la release e caricare gli artefatti (rimane quasi invariato)
+  # Job separato per creare la release e caricare gli artefatti
   create_release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: build_and_package # This job runs ONLY after build_and_package is complete for all targets
+    needs: build_and_package
 
     steps:
       - name: Checkout Code
@@ -123,8 +115,7 @@ jobs:
       - name: Download all build artefacts
         uses: actions/download-artifact@v4
         #with:
-          # By default, this downloads all artifacts from the run
-          # They will be downloaded into subdirectories named after the artifact names
+          # Downloads into subdirectories named after the artifact names
 
       - name: List downloaded files (for debugging)
         run: |
@@ -133,13 +124,17 @@ jobs:
       - name: Create Release and Upload Assets
         uses: houseabsolute/actions-rust-release@v0
         with:
+          # --- Parametro richiesto dall'action ---
+          executable-name: telnet-rs # Specificato il nome del binario
+          # ------------------------------------
+
           skip_build: true
           skip_test: true
           skip_upload: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # The files pattern should still work as download-artifact places them in subdirectories
+          # I pattern dei file devono corrispondere ai NOMI degli artefatti aggiornati
           files: |
-            my-app-linux-x64/*
-            my-app-windows-x64/*
-          # Add other artifact patterns here if you add more targets to the matrix
-          # my-app-macos-x64/*
+            telnet-rs-linux-x64/*
+            telnet-rs-windows-x64/*
+          # Aggiungi qui altri pattern se aggiungi target
+          # telnet-rs-macos-x64/*
