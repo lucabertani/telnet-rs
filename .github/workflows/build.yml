@@ -81,7 +81,7 @@ jobs:
         shell: powershell # Use PowerShell for Windows commands
         run: |
           $ARTIFACT_DIR = "target\${{ matrix.target }}\release"
-          $APP_NAME = "my-app" # Replace with your binary name
+          $APP_NAME = "telnet-rs" # Replace with your binary name
           $FILE_TO_ARCHIVE = Join-Path -Path $ARTIFACT_DIR -ChildPath "${APP_NAME}.exe"
 
           # Check if the binary exists
