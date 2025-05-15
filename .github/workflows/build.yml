@@ -96,6 +96,10 @@ jobs:
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
+      - name: Set release tag
+        id: tag
+        run: echo "tag=release-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
       - name: Download Linux archive
         uses: actions/download-artifact@v4
         with:
@@ -117,9 +121,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
           files: |
             artifacts/${{ env.BIN_NAME }}-linux.tar.gz
             artifacts/${{ env.BIN_NAME }}-windows.zip
             artifacts/${{ env.BIN_NAME }}-macos.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
