@@ -92,7 +92,7 @@ jobs:
                 "repository": "lucabertani/telnet-rs",
                 "token": "${{ secrets.ACTIONS_RUST_RELEASE_TESTING_TOKEN }}",
                 "name": "${{ steps.tag.outputs.release_date }} Telnet rs",
-                "tag_name": "${{ steps.tag.outputs.release_tag }}""
+                "tag_name": "${{ steps.tag.outputs.release_tag }}"
             }
 
       # - name: Build archive
